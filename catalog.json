@@ -1,0 +1,103 @@
+{
+  "brand": "تجربة المجوهرات",
+  "logo": "logo.png",
+  "logoStyle": "gold",
+  "items": [
+    {
+      "id": "ring-001",
+      "type": "ring",
+      "file": "models/rings/ring-001.glb",
+      "thumb": "thumbs/ring-001.png",
+      "name_ar": "هيريتج",
+      "name_en": "Heritage"
+    },
+    {
+      "id": "ring-003",
+      "type": "ring",
+      "file": "models/rings/ring-003.glb",
+      "thumb": "thumbs/ring-003.png",
+      "name_ar": "بريليانت",
+      "name_en": "Brilliant"
+    },
+    {
+      "id": "ring-004",
+      "type": "ring",
+      "file": "models/rings/ring-004.glb",
+      "thumb": "thumbs/ring-004.png",
+      "name_ar": "أزتيك",
+      "name_en": "Aztec"
+    },
+    {
+      "id": "ring-005",
+      "type": "ring",
+      "file": "models/rings/ring-005.glb",
+      "thumb": "thumbs/ring-005.png",
+      "name_ar": "أورورا",
+      "name_en": "Aurora"
+    },
+    {
+      "id": "ring-007",
+      "type": "ring",
+      "file": "models/rings/ring-007.glb",
+      "thumb": "thumbs/ring-007.png",
+      "name_ar": "سيليست",
+      "name_en": "Celeste"
+    },
+    {
+      "id": "ring-009",
+      "type": "ring",
+      "file": "models/rings/ring-009.glb",
+      "thumb": "thumbs/ring-009.png",
+      "name_ar": "نور",
+      "name_en": "Noor"
+    },
+    {
+      "id": "ring-011",
+      "type": "ring",
+      "file": "models/rings/ring-011.glb",
+      "thumb": "thumbs/ring-011.png",
+      "name_ar": "ليلى",
+      "name_en": "Layla"
+    },
+    {
+      "id": "ring-012",
+      "type": "ring",
+      "file": "models/rings/ring-012.glb",
+      "thumb": "thumbs/ring-012.png",
+      "name_ar": "دانة",
+      "name_en": "Dana"
+    },
+    {
+      "id": "ring-013",
+      "type": "ring",
+      "file": "models/rings/ring-013.glb",
+      "thumb": "thumbs/ring-013.png",
+      "name_ar": "سوليتير",
+      "name_en": "Solitaire"
+    },
+    {
+      "id": "bangle-001",
+      "type": "bangle",
+      "file": "models/bangles/bangle-001.glb",
+      "thumb": "thumbs/bangle-001.png",
+      "name_ar": "زهرة",
+      "name_en": "Zahra"
+    },
+    {
+      "id": "bangle-002",
+      "type": "bangle",
+      "file": "models/bangles/bangle-002.glb",
+      "thumb": "thumbs/bangle-002.png",
+      "name_ar": "فيليجري",
+      "name_en": "Filigree"
+    },
+    {
+      "id": "bangle-009",
+      "type": "bangle",
+      "file": "models/bangles/bangle-009.glb",
+      "thumb": "thumbs/bangle-009.png",
+      "name_ar": "ليان",
+      "name_en": "Layan"
+    }
+  ]
+}

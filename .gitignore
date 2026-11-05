@@ -1,0 +1,8 @@
+site/
+source/
+models/
+thumbs/
+node_modules/
+.wrangler/
+__pycache__/
+logo.png

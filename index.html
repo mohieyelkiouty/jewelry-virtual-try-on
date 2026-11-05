@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<title>تجربة المجوهرات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<style>
+  :root{--gold:#d9b45a;--gold2:#f3d98b;--ink:#0b0b0d;--glass:rgba(18,18,20,.58)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#000;color:#fff;overflow:hidden;
+    font-family:Cairo,system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+  button{font-family:inherit;color:inherit}
+  #stage{position:fixed;inset:0}
+  video,canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #stage.contain video,#stage.contain canvas{object-fit:contain}
+
+  /* Header */
+  #top{position:fixed;top:0;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;
+    padding:max(12px,env(safe-area-inset-top)) 16px 22px;background:linear-gradient(#000c,#0000)}
+  #brand{font-size:17px;font-weight:700;letter-spacing:.4px;display:flex;align-items:center;gap:8px}
+  #brand:before{content:"";width:8px;height:8px;background:linear-gradient(135deg,var(--gold2),var(--gold));transform:rotate(45deg);border-radius:1px}
+  #brand.has-logo:before,#brand.has-logo #brandText{display:none}
+  #brand.plate{background:#f6efe0;padding:4px 14px;border-radius:20px;box-shadow:0 4px 18px #0006}
+  #brandLogo>*,#introLogo>*{display:block}
+  .logo{background:linear-gradient(135deg,var(--gold2),var(--gold));-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
+  .round{width:44px;height:44px;border-radius:50%;border:1px solid #ffffff2a;background:var(--glass);
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:grid;place-items:center;padding:0}
+  .round svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+  /* Hand placement guide */
+  #guide{position:fixed;left:50%;top:44%;width:min(58vw,260px);transform:translate(-50%,-50%);z-index:3;
+    pointer-events:none;transition:opacity .35s;opacity:0}
+  #guide g{fill:none;stroke:#fff;stroke-opacity:.3;stroke-width:20;stroke-linecap:round;stroke-linejoin:round}
+
+  #msg{position:fixed;left:0;right:0;bottom:calc(214px + env(safe-area-inset-bottom));z-index:5;text-align:center;
+    font-size:15px;font-weight:600;padding:0 24px;pointer-events:none;transition:opacity .3s;text-shadow:0 1px 6px #000}
+
+  /* Product panel */
+  #bottom{position:fixed;left:0;right:0;bottom:0;z-index:5;padding:30px 0 max(14px,env(safe-area-inset-bottom));
+    background:linear-gradient(#0000,#000d 38%);display:flex;flex-direction:column;gap:12px}
+  #tabs{display:flex;gap:6px;justify-content:center}
+  #tabs button{border:0;background:transparent;font-size:14px;font-weight:600;padding:6px 16px;border-radius:20px;opacity:.65}
+  #tabs button.on{opacity:1;background:#ffffff1c;color:var(--gold2)}
+  #rings{display:flex;gap:10px;overflow-x:auto;padding:2px 16px 4px;scroll-snap-type:x proximity;scrollbar-width:none}
+  #rings::-webkit-scrollbar{display:none}
+  .card{position:relative;flex:0 0 auto;width:84px;border:1px solid #ffffff22;background:var(--glass);border-radius:16px;
+    padding:6px 6px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;scroll-snap-align:center;
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .card[hidden]{display:none}
+  .card .th{position:relative;width:62px;height:62px;border-radius:12px;background:radial-gradient(circle at 50% 35%,#2b2b30,#141416);
+    display:grid;place-items:center;overflow:hidden}
+  .card .th svg{width:30px;height:30px;stroke:var(--gold);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;opacity:.9}
+  .card .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+  .card .th.has svg{display:none}
+  .card .nm{font-size:12px;font-weight:600;line-height:1.25;text-align:center;max-width:100%;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .card.on{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset,0 6px 20px #d9b45a33}
+  .card.on .nm{color:var(--gold2)}
+  .card .sp{display:none;position:absolute;top:50%;left:50%;width:24px;height:24px;margin:-12px;border-radius:50%;
+    border:2px solid #fff4;border-top-color:var(--gold2);animation:spin .8s linear infinite;z-index:2}
+  .card.busy .sp{display:block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  #shot{position:fixed;right:16px;bottom:calc(238px + env(safe-area-inset-bottom));z-index:6;width:58px;height:58px;border-radius:50%;
+    border:3px solid #fff;background:#ffffff26;display:grid;place-items:center;padding:0;backdrop-filter:blur(6px)}
+  #shot:active{transform:scale(.94)}
+  #shot svg{width:24px;height:24px;stroke:#fff;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+  /* Intro screen */
+  #start{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:28px;gap:18px;
+    background:radial-gradient(ellipse at 50% 20%,#2a2416 0%,#0b0b0d 62%)}
+  #start .mark{width:54px;height:54px;transform:rotate(45deg);border:1.5px solid var(--gold);border-radius:6px;display:grid;place-items:center;margin-bottom:10px}
+  #introLogo{margin-bottom:8px}
+  #introLogo.plate{background:#f6efe0;padding:22px;border-radius:30px;box-shadow:0 14px 40px #0008}
+  #start .mark i{width:20px;height:20px;background:linear-gradient(135deg,var(--gold2),var(--gold));border-radius:3px}
+  #start h1{font-size:28px;margin:0;font-weight:700}
+  #start p{margin:0;max-width:320px;line-height:1.9;opacity:.82;font-size:15px}
+  #start ol{list-style:none;margin:6px 0 0;padding:0;display:flex;flex-direction:column;gap:10px;font-size:15px;text-align:right}
+  #start ol li{display:flex;gap:12px;align-items:center}
+  #start ol b{flex:0 0 28px;height:28px;border-radius:50%;border:1px solid var(--gold);color:var(--gold2);display:grid;place-items:center;font-size:13px}
+  #bStart{margin-top:12px;background:linear-gradient(135deg,var(--gold2),var(--gold));color:#1a1405;border:0;border-radius:30px;
+    padding:15px 46px;font-size:17px;font-weight:700;box-shadow:0 10px 30px #d9b45a40}
+  #bStart:disabled{opacity:.6}
+  #startMsg{font-size:14px;line-height:1.7;opacity:.9;min-height:22px;max-width:320px}
+  #start small{opacity:.55;max-width:300px;line-height:1.7;font-size:12px}
+
+  /* Developer and diagnostics overlays */
+  #dev,#diag{display:none}
+  #dev{position:fixed;top:64px;left:8px;right:8px;z-index:6;flex-wrap:wrap;gap:6px;align-items:center;
+    background:#000b;padding:8px;border-radius:10px;font-size:13px}
+  body.dev #dev{display:flex}
+  #dev button,#dev select,#dev label.f{background:#222;color:#eee;border:1px solid #555;border-radius:8px;padding:6px 10px;font-size:13px}
+  input[type=file]{display:none}
+  #diag{position:fixed;top:56px;left:6px;z-index:30;max-width:92vw;background:#000c;color:#7CFC9A;font:11px/1.45 ui-monospace,Consolas,monospace;
+    padding:6px 8px;border-radius:6px;white-space:pre-wrap;pointer-events:none;direction:ltr;text-align:left}
+  body.debug #diag{display:block}
+</style>
+</head>
+<body>
+<div id="stage"><video id="v" playsinline muted></video></div>
+
+<svg id="guide" viewBox="0 0 200 300" aria-hidden="true"><g>
+  <line x1="72" y1="150" x2="72" y2="62"/><line x1="96" y1="150" x2="96" y2="44"/>
+  <line x1="120" y1="150" x2="120" y2="58"/><line x1="143" y1="158" x2="143" y2="88"/>
+  <line x1="50" y1="190" x2="28" y2="132"/><rect x="54" y="142" width="100" height="112" rx="42"/>
+</g></svg>
+
+<div id="top">
+  <button class="round" id="bCam" aria-label="تبديل الكاميرا">
+    <svg viewBox="0 0 24 24"><path d="M20 7h-3l-1.5-2h-7L7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/><path d="M9.5 13.5a2.5 2.5 0 0 1 4.3-1.7M14.5 12.5a2.5 2.5 0 0 1-4.3 1.7"/></svg>
+  </button>
+  <span id="brand"><span id="brandLogo"></span><span id="brandText">تجربة المجوهرات</span></span>
+  <span style="width:44px"></span>
+</div>
+
+<div id="msg"></div>
+<div id="diag"></div>
+
+<div id="dev">
+  <label class="f">Open file<input id="file" type="file" accept=".glb,.gltf,.obj" multiple></label>
+  <select id="finger"><option value="ring">Ring finger</option><option value="index">Index</option><option value="middle">Middle</option><option value="pinky">Pinky</option></select>
+  <select id="metal"><option value="gold">Gold</option><option value="silver">Silver</option><option value="rose">Rose</option></select>
+  <button id="bAxis">Axis (A)</button><button id="bFlipM">Flip 180 (R)</button><button id="bFlipP">Stone side (F)</button><button id="bCfg">Copy settings</button>
+  <label>Scale <input id="adj" type="range" min="0.5" max="2.5" step="0.01" value="1"></label>
+</div>
+
+<button id="shot" aria-label="التقاط صورة">
+  <svg viewBox="0 0 24 24"><path d="M20 7h-3l-1.5-2h-7L7 7H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+</button>
+
+<div id="bottom">
+  <div id="tabs">
+    <button data-t="all" class="on">الكل</button>
+    <button data-t="ring">خواتم</button>
+    <button data-t="bangle">أساور</button>
+  </div>
+  <div id="rings"></div>
+</div>
+
+<div id="start">
+  <div class="mark"><i></i></div>
+  <div id="introLogo" hidden></div>
+  <h1>جرّب مجوهراتنا على يدك</h1>
+  <p>شاهد القطعة عليك مباشرةً قبل الاختيار.</p>
+  <ol>
+    <li><b>١</b><span>اختر قطعة من القائمة</span></li>
+    <li><b>٢</b><span>وجّه الكاميرا نحو يدك</span></li>
+    <li><b>٣</b><span>التقط صورة وشاركها</span></li>
+  </ol>
+  <button id="bStart">ابدأ التجربة</button>
+  <div id="startMsg"></div>
+  <small>خصوصيتك محفوظة: تعمل الكاميرا على جهازك مباشرةً، ولا يتم رفع أي صورة أو فيديو.</small>
+</div>
+
+<script type="module">
+import * as THREE from "three";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
+import { mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
+import { HandLandmarker, FilesetResolver } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+
+const P = new URLSearchParams(location.search);
+const DEV = P.has("dev"), DEBUG = P.has("debug"), THUMBS = P.has("thumbs");
+if (DEV) document.body.classList.add("dev");
+if (DEBUG) document.body.classList.add("debug");
+const $ = id => document.getElementById(id);
+const video = $("v"), stage = $("stage"), msgEl = $("msg"), dbgEl = $("diag"), guide = $("guide"),
+      startEl = $("start"), startMsg = $("startMsg"), bStart = $("bStart"), bar = $("rings"), brandEl = $("brand");
+let brand = $("brandText").textContent, logoImg = null, logoMark = null, logoStyle = "gold";
+
+// ---------- Diagnostics ----------
+const D = {};
+const dbg = (k, v) => { if (!DEBUG) return; D[k] = v; dbgEl.textContent = Object.entries(D).map(([a, b]) => a + ": " + b).join("\n"); };
+if (DEBUG) {
+  addEventListener("error", e => dbg("error", e.message));
+  addEventListener("unhandledrejection", e => dbg("reject", (e.reason && e.reason.message) || e.reason));
+}
+let lastHint = "";
+const hint = t => { if (t !== lastHint) { lastHint = t; msgEl.textContent = t; } };
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ---------- One Euro Filter ----------
+class LowPass { constructor(){this.y=null} f(x,a){this.y=this.y===null?x:a*x+(1-a)*this.y;return this.y} }
+class OneEuro {
+  constructor(minCut=1.2,beta=0.02,dCut=1){this.minCut=minCut;this.beta=beta;this.dCut=dCut;this.x=new LowPass();this.dx=new LowPass();this.prev=null}
+  alpha(c,dt){const tau=1/(2*Math.PI*c);return 1/(1+tau/dt)}
+  f(v,t){
+    if(this.prev===null){this.prev=t;return this.x.f(v,1)}
+    const dt=Math.max((t-this.prev)/1000,1e-3);this.prev=t;
+    const d=(v-(this.x.y??v))/dt;
+    const ed=this.dx.f(d,this.alpha(this.dCut,dt));
+    return this.x.f(v,this.alpha(this.minCut+this.beta*Math.abs(ed),dt));
+  }
+}
+const filters = Array.from({length:21},()=>[new OneEuro(),new OneEuro(),new OneEuro()]);
+
+// ---------- Three.js ----------
+const renderer = new THREE.WebGLRenderer({alpha:true,antialias:true});
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.6;
+stage.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+const pm = new THREE.PMREMGenerator(renderer);
+scene.environment = pm.fromScene(new RoomEnvironment(),0.04).texture;
+const dl = new THREE.DirectionalLight(0xffffff,2.2); dl.position.set(300,500,800); scene.add(dl);
+const dl2 = new THREE.DirectionalLight(0xffffff,1.2); dl2.position.set(-400,200,600); scene.add(dl2);
+scene.add(new THREE.HemisphereLight(0xffffff,0x666666,0.8));
+
+const metals = {
+  gold:  new THREE.MeshStandardMaterial({color:0xf0c040,metalness:1,roughness:0.28,envMapIntensity:2.8,side:THREE.DoubleSide}),
+  silver:new THREE.MeshStandardMaterial({color:0xf2f2f6,metalness:1,roughness:0.2,envMapIntensity:2.8,side:THREE.DoubleSide}),
+  rose:  new THREE.MeshStandardMaterial({color:0xd98a8a,metalness:1,roughness:0.26,envMapIntensity:2.8,side:THREE.DoubleSide}),
+};
+
+// Depth-only occluder sized to the finger or wrist
+const occGeo = new THREE.CylinderGeometry(1,1,1,32); occGeo.rotateZ(Math.PI/2);
+const occluder = new THREE.Mesh(occGeo,new THREE.MeshBasicMaterial({colorWrite:false}));
+occluder.renderOrder = 0; occluder.visible=false; scene.add(occluder);
+
+// ---------- Entries ----------
+const ICON = {
+  ring:'<svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="6"/><path d="M9.5 6.5 12 3l2.5 3.5L12 8z"/></svg>',
+  bangle:'<svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="5.5"/><ellipse cx="12" cy="12" rx="9" ry="5.5" transform="translate(0 3)" opacity=".5"/></svg>'
+};
+const entries = []; let cur = 0; let tracked = false; let poseFlip = 1; let tab = "all";
+
+function addEntry(e){
+  entries.push(e); scene.add(e.group); e.group.visible=false;
+  const b=document.createElement("button"); b.className="card"; b.dataset.type=e.type||"ring";
+  b.innerHTML='<span class="th">'+(ICON[e.type]||ICON.ring)+'</span><span class="nm"></span><i class="sp"></i>';
+  b.querySelector(".nm").textContent=e.name;
+  if(e.thumb){
+    const img=new Image(); img.alt=""; img.onload=()=>b.querySelector(".th").classList.add("has"); img.onerror=()=>img.remove();
+    img.src=e.thumb; b.querySelector(".th").appendChild(img);
+  }
+  b.onclick=()=>select(entries.indexOf(e)); bar.appendChild(b); e.btn=b;
+  if(entries.length===1) select(0);
+}
+function select(i){
+  cur=i; entries.forEach((x,j)=>x.btn.classList.toggle("on",j===i));
+  const e=entries[i];
+  $("adj").value = e.adj ?? 1;
+  e.btn.scrollIntoView({inline:"center",block:"nearest",behavior:"smooth"});
+  if(e.lazy) ensureLoaded(e);
+}
+async function ensureLoaded(e){
+  if(!e.lazy || e.loading) return;
+  e.loading=true; e.failed=false; e.btn.classList.add("busy");
+  let ok=false, why="";
+  try{
+    const rr=await fetch(e.file); if(!rr.ok) throw new Error("HTTP "+rr.status);
+    const b=await rr.blob();
+    ok=await Promise.race([
+      handleFile(new File([b],e.file.split("/").pop()),{entry:e,catalog:true}),
+      sleep(90000).then(()=>{ throw new Error("timeout"); })
+    ]);
+  }catch(err){ why=String((err&&err.message)||err); }
+  e.loading=false; e.btn.classList.remove("busy");
+  if(!ok){ e.failed=true; dbg("load "+e.id,"FAILED "+why); return; }
+  dbg("load "+e.id,"ok");
+  if(entries[cur]===e) $("adj").value=e.adj;
+}
+
+// ---------- Orientation (auto) ----------
+function measure(e,rot,holder){
+  holder.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(rot,true);
+  const size=box.getSize(new THREE.Vector3());
+  const hi=box.min.y+size.y*0.75, lo=box.min.y+size.y*0.25;
+  let top=0,bot=0; const v=new THREE.Vector3();
+  e.model.traverse(o=>{
+    if(!o.isMesh) return;
+    const p=o.geometry.attributes.position;
+    for(let i=0;i<p.count;i++){ v.fromBufferAttribute(p,i).applyMatrix4(o.matrixWorld); if(v.y>hi)top++; else if(v.y<lo)bot++; }
+  });
+  return {box,size,hasStone:e.type!=="bangle"&&size.y>size.z*1.08,stoneUp:top>=bot};
+}
+function applyAdj(e){ if(e.holder) e.holder.scale.setScalar(e.baseScale*e.adj); }
+
+function orient(e){
+  if(e.holder) e.group.remove(e.holder);
+  const holder=new THREE.Group(), rot=new THREE.Group();
+  holder.add(rot); rot.add(e.model); holder.updateMatrixWorld(true);
+  const sz=new THREE.Box3().setFromObject(e.model,true).getSize(new THREE.Vector3());
+  const d=[sz.x,sz.y,sz.z];
+  if(e.axisIdx===undefined) e.axisIdx=d.indexOf(Math.min(...d));
+  const others=[0,1,2].filter(i=>i!==e.axisIdx);
+  const vi=d[others[0]]>=d[others[1]]?others[0]:others[1];
+  const U=[new THREE.Vector3(1,0,0),new THREE.Vector3(0,1,0),new THREE.Vector3(0,0,1)];
+  const ea=U[e.axisIdx], ev=U[vi], eh=new THREE.Vector3().crossVectors(ea,ev);
+  const qR=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().set(
+    ea.x,ea.y,ea.z,0, ev.x,ev.y,ev.z,0, eh.x,eh.y,eh.z,0, 0,0,0,1));
+  const qF=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),Math.PI);
+  rot.quaternion.copy(qR);
+  let m=measure(e,rot,holder);
+  const auto=m.hasStone && !m.stoneUp;
+  if(auto!==!!e.userFlip){ rot.quaternion.copy(qF.clone().multiply(qR)); m=measure(e,rot,holder); }
+  const c=m.box.getCenter(new THREE.Vector3());
+  let hy=c.y;
+  if(m.hasStone) hy=m.stoneUp?m.box.min.y+m.size.z/2:m.box.max.y-m.size.z/2;
+  rot.position.set(-c.x,-hy,-c.z);
+  const D2=e.type==="bangle"?(m.size.y+m.size.z)/2:m.size.z;
+  e.baseScale=1/((D2/2)*(e.type==="bangle"?0.95:0.88));   // normalize inner radius to 1
+  e.holder=holder; e.group.add(holder); applyAdj(e);
+  dbg("orient "+(e.id||e.name),`axis=${"XYZ"[e.axisIdx]} stone=${m.hasStone} type=${e.type}`);
+}
+
+// ---------- Model loading ----------
+const gltfL=new GLTFLoader(), objL=new OBJLoader();
+const draco=new DRACOLoader(); draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
+gltfL.setDRACOLoader(draco); gltfL.setMeshoptDecoder(MeshoptDecoder);
+const metalSel=$("metal");
+
+function handleFile(f,meta={}){
+  return new Promise(resolve=>{
+    const ext=f.name.split(".").pop().toLowerCase(), url=URL.createObjectURL(f);
+    const done=(model,isObj)=>{
+      try{
+        model.traverse(o=>{
+          if(!o.isMesh) return;
+          o.renderOrder=1;
+          if(isObj){
+            let g=o.geometry; g.deleteAttribute("normal"); g.deleteAttribute("uv");
+            g=mergeVertices(g,1e-6); g.computeVertexNormals(); o.geometry=g;
+            o.material=metals[metalSel.value];
+          } else {
+            (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{ if(m) m.envMapIntensity=2.8; });
+          }
+        });
+        if(meta.entry){
+          const e=meta.entry, c=e.cfg||{}; Object.assign(e,{model,isObj,userFlip:!!c.flip,adj:c.scale||1});
+          if(c.axis!==undefined) e.axisIdx=c.axis;
+          orient(e); e.lazy=false;
+          return resolve(true);
+        }
+        const e={name:(meta.name_ar||meta.name_en||f.name.replace(/\.[^.]+$/,"")).slice(0,22),type:meta.type||(/bangle/i.test(f.name)?"bangle":"ring"),group:new THREE.Group(),model,isObj,userFlip:false,adj:1};
+        orient(e); addEntry(e); select(entries.length-1);
+        resolve(true);
+      }catch(err){ dbg("done error",(err&&err.message)||err); resolve(false); }
+    };
+    const fail=err=>{ dbg("loader error",(err&&err.message)||err); resolve(false); };
+    if(ext==="glb"||ext==="gltf") gltfL.load(url,g=>done(g.scene,false),undefined,fail);
+    else if(ext==="obj") objL.load(url,o=>done(o,true),undefined,fail);
+    else resolve(false);
+  });
+}
+$("file").onchange=ev=>{ for(const f of ev.target.files) handleFile(f); ev.target.value=""; };
+metalSel.onchange=()=>entries.filter(e=>e.isObj).forEach(e=>e.model.traverse(o=>{if(o.isMesh)o.material=metals[metalSel.value]}));
+const qs=P.get("m");
+if(qs) for(const u of qs.split(",")){
+  fetch(u).then(r=>{if(!r.ok)throw 0;return r.blob()}).then(b=>handleFile(new File([b],u.split("/").pop()))).catch(()=>dbg("m","failed "+u));
+}
+
+// ---------- Catalog ----------
+// Logo styles: "gold" tints a transparent PNG with the gold gradient, "original" keeps its colors, "plate" sits on an ivory card.
+function tintLogo(img){
+  const c=document.createElement("canvas"); c.width=img.width; c.height=img.height;
+  const g=c.getContext("2d"); g.drawImage(img,0,0); g.globalCompositeOperation="source-in";
+  const gr=g.createLinearGradient(0,0,c.width,c.height); gr.addColorStop(0,"#f3d98b"); gr.addColorStop(1,"#d9b45a");
+  g.fillStyle=gr; g.fillRect(0,0,c.width,c.height);
+  return c;
+}
+function setLogo(src,style){
+  const img=new Image();
+  img.onload=()=>{
+    logoImg=img; logoStyle=style; logoMark=style==="gold"?tintLogo(img):img;
+    const ratio=img.width/img.height;
+    const make=h=>{
+      const el=document.createElement(style==="gold"?"div":"img");
+      el.style.height=h+"px"; el.style.width=Math.min(h*ratio,300)+"px";
+      if(style==="gold"){ el.className="logo"; const u='url("'+src+'")'; el.style.webkitMaskImage=u; el.style.maskImage=u; }
+      else { el.src=src; el.alt=""; el.style.objectFit="contain"; }
+      return el;
+    };
+    $("brandLogo").replaceChildren(make(30));
+    $("introLogo").replaceChildren(make(150)); $("introLogo").hidden=false;
+    brandEl.classList.add("has-logo");
+    brandEl.classList.toggle("plate",style==="plate"); $("introLogo").classList.toggle("plate",style==="plate");
+    startEl.querySelector(".mark").style.display="none";
+  };
+  img.src=src;
+}
+async function loadCatalog(){
+  try{
+    const r=await fetch("catalog.json"); if(!r.ok) throw new Error("HTTP "+r.status);
+    const data=await r.json(); const items=Array.isArray(data)?data:(data.items||[]);
+    if(!Array.isArray(data)){
+      if(data.brand){ brand=data.brand; $("brandText").textContent=brand; }
+      if(data.logo) setLogo(data.logo, data.logoStyle||"gold");
+    }
+    for(const it of items){
+      addEntry({id:it.id,name:(it.name_ar||it.name_en||it.id).slice(0,26),type:it.type||"ring",file:it.file,thumb:it.thumb,
+        group:new THREE.Group(),lazy:true,adj:1,cfg:{axis:it.axis,flip:it.flip,scale:it.scale}});
+    }
+    dbg("catalog",items.length+" items");
+  }catch(err){ hint("تعذر تحميل قائمة المنتجات"); dbg("catalog","FAILED "+((err&&err.message)||err)); }
+}
+const catalogReady=loadCatalog();
+
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
+  tab=b.dataset.t;
+  document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));
+  entries.forEach(x=>x.btn.hidden=!(tab==="all"||x.type===tab));
+  if(entries[cur]&&entries[cur].btn.hidden){ const f=entries.find(x=>!x.btn.hidden); if(f) select(entries.indexOf(f)); }
+});
+
+// ---------- Developer tools ----------
+const cycleAxis=()=>{const e=entries[cur]; if(!e||e.lazy)return; e.axisIdx=(e.axisIdx+1)%3; orient(e)};
+const flipModel=()=>{const e=entries[cur]; if(!e||e.lazy)return; e.userFlip=!e.userFlip; orient(e)};
+const flipPose=()=>{poseFlip*=-1};
+$("bAxis").onclick=cycleAxis; $("bFlipM").onclick=flipModel; $("bFlipP").onclick=flipPose;
+$("adj").oninput=ev=>{const e=entries[cur]; if(!e||e.lazy)return; e.adj=+ev.target.value; applyAdj(e)};
+addEventListener("keydown",e=>{const k=e.key.toLowerCase(); if(k==="a")cycleAxis(); if(k==="r")flipModel(); if(k==="f")flipPose()});
+$("bCfg").onclick=()=>{
+  const e=entries[cur]; if(!e||e.lazy) return;
+  prompt("Paste into the "+(e.id||"")+" entry in catalog.json",
+    ', "axis": '+e.axisIdx+', "flip": '+(!!e.userFlip)+', "scale": '+(+(+e.adj).toFixed(2)));
+};
+
+// ---------- Thumbnail generator (?thumbs) ----------
+async function runThumbs(){
+  startEl.querySelector("h1").textContent="Thumbnail generator";
+  startEl.querySelector("p").textContent="One PNG per product will be downloaded. Allow multiple downloads if prompted.";
+  startEl.querySelector("ol").style.display="none"; bStart.style.display="none";
+  const ts=new THREE.Scene(); ts.environment=scene.environment;
+  const l1=new THREE.DirectionalLight(0xffffff,2.2); l1.position.set(3,5,6); ts.add(l1);
+  ts.add(new THREE.HemisphereLight(0xffffff,0x666666,0.8));
+  const cam=new THREE.PerspectiveCamera(28,1,0.1,200), S=384;
+  renderer.setSize(S,S,false);
+  for(const e of entries){
+    startMsg.textContent="Rendering "+e.id+" ...";
+    await ensureLoaded(e); if(e.lazy){ startMsg.textContent+=" (failed)"; await sleep(800); continue; }
+    const g=e.group; scene.remove(g); g.visible=true; g.position.set(0,0,0); g.quaternion.identity(); g.scale.setScalar(1);
+    ts.add(g); g.updateMatrixWorld(true);
+    const box=new THREE.Box3().setFromObject(g,true), c=box.getCenter(new THREE.Vector3()), r=box.getSize(new THREE.Vector3()).length()/2;
+    const dist=r/Math.sin(THREE.MathUtils.degToRad(14))*1.08;
+    cam.position.copy(c).addScaledVector(new THREE.Vector3(1,0.75,1.25).normalize(),dist); cam.lookAt(c); cam.updateProjectionMatrix();
+    renderer.render(ts,cam);
+    const a=document.createElement("a"); a.href=renderer.domElement.toDataURL("image/png"); a.download=e.id+".png"; a.click();
+    ts.remove(g); scene.add(g); g.visible=false;
+    await sleep(500);
+  }
+  startMsg.textContent="Done. Move the PNGs into thumbs/ and run build_site.py.";
+}
+if(THUMBS){ await catalogReady; await runThumbs(); await new Promise(()=>{}); }
+
+// ---------- Photo capture ----------
+let shotReq=false;
+$("shot").onclick=()=>{ shotReq=true; };
+function doShot(){
+  const c=document.createElement("canvas"); c.width=W; c.height=H; const x=c.getContext("2d");
+  if(facing==="user"){ x.translate(W,0); x.scale(-1,1); }
+  x.drawImage(video,0,0,W,H); x.drawImage(renderer.domElement,0,0,W,H);
+  x.setTransform(1,0,0,1,0,0);
+  const pad=Math.round(W*0.04);
+  if(logoImg){
+    const h=Math.round(W*0.085), w=Math.round(h*logoImg.width/logoImg.height);
+    if(logoStyle==="plate"){
+      const px=Math.round(h*0.22);
+      x.shadowColor="rgba(0,0,0,.35)"; x.shadowBlur=10; x.fillStyle="rgba(247,241,227,.92)";
+      if(x.roundRect){ x.beginPath(); x.roundRect(pad,H-pad-h-2*px,w+2*px,h+2*px,px); x.fill(); }
+      else x.fillRect(pad,H-pad-h-2*px,w+2*px,h+2*px);
+      x.shadowBlur=0; x.drawImage(logoMark,pad+px,H-pad-h-px,w,h);
+    } else {
+      x.shadowColor="rgba(0,0,0,.55)"; x.shadowBlur=12; x.drawImage(logoMark,pad,H-pad-h,w,h);
+    }
+  } else {
+    x.font="600 "+Math.round(W*0.034)+"px Cairo,sans-serif"; x.fillStyle="rgba(255,255,255,.85)"; x.textAlign="left";
+    x.shadowColor="rgba(0,0,0,.6)"; x.shadowBlur=8; x.fillText(brand,pad,H-pad);
+  }
+  c.toBlob(async b=>{
+    const f=new File([b],"tryon.png",{type:"image/png"});
+    if(navigator.canShare && navigator.canShare({files:[f]})){ try{ await navigator.share({files:[f]}); return; }catch(e){} }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="tryon.png"; a.click();
+  },"image/png");
+}
+const FINGERS={ring:[13,14],index:[5,6],middle:[9,10],pinky:[17,18]};
+
+// ---------- Camera and hand tracking ----------
+let W=1280,H=720,facing="user",stream=null;
+const camera=new THREE.OrthographicCamera(-1,1,1,-1,-3000,3000); camera.position.z=1000;
+function updateFit(){
+  const off=Math.abs(Math.log((W/H)/(innerWidth/innerHeight)));
+  stage.classList.toggle("contain",off>0.3);
+  return off;
+}
+addEventListener("resize",updateFit);
+async function startCam(){
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  const portrait=innerHeight>innerWidth;
+  const attempts=portrait
+    ? [{width:{exact:720},height:{exact:1280}},{width:{exact:480},height:{exact:640}},
+       {width:{ideal:720},height:{ideal:1280},aspectRatio:{ideal:innerWidth/innerHeight}}]
+    : [{width:{ideal:1280},height:{ideal:720}}];
+  for(const a of attempts){
+    try{ stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:facing,...a},audio:false}); break; }
+    catch(err){ if(err.name!=="OverconstrainedError") throw err; }
+  }
+  if(!stream) throw new Error("no camera stream");
+  video.srcObject=stream; await video.play();
+  W=video.videoWidth; H=video.videoHeight;
+  renderer.setSize(W,H,false);
+  camera.left=-W/2; camera.right=W/2; camera.top=H/2; camera.bottom=-H/2; camera.updateProjectionMatrix();
+  stage.style.transform = facing==="user" ? "scaleX(-1)" : "none";
+
+  // Reset digital zoom to the widest setting when the device exposes it.
+  const track=stream.getVideoTracks()[0], caps=track.getCapabilities?track.getCapabilities():{};
+  if(caps.zoom){ try{ await track.applyConstraints({advanced:[{zoom:caps.zoom.min}]}); }catch(e){} }
+  const off=updateFit();
+  dbg("camera",W+"x"+H+" "+facing+" fit="+(off>0.3?"contain":"cover")+(caps.zoom?" zoom="+caps.zoom.min:""));
+}
+for(;;){
+  await new Promise(r=>{ bStart.onclick=r; });
+  bStart.disabled=true; startMsg.textContent="جاري تشغيل الكاميرا...";
+  try{ await startCam(); break; }
+  catch(err){
+    console.error(err);
+    const n=(err&&err.name)||"";
+    startMsg.textContent =
+      (n==="NotAllowedError"||n==="SecurityError") ? "الكاميرا محجوبة عن الموقع. اضغط على أيقونة القفل بجانب الرابط ← الأذونات ← الكاميرا ← سماح، ثم اضغط إعادة المحاولة." :
+      n==="NotFoundError" ? "لا توجد كاميرا متاحة على هذا الجهاز." :
+      n==="NotReadableError" ? "الكاميرا مستخدمة في تطبيق آخر. أغلقه وحاول مرة أخرى." :
+      "تعذّر تشغيل الكاميرا ("+(n||String(err))+"). جرّب متصفح Chrome.";
+    bStart.disabled=false; bStart.textContent="إعادة المحاولة";
+  }
+}
+$("bCam").onclick=async()=>{facing=facing==="user"?"environment":"user"; try{ await startCam(); }catch(e){ dbg("camera","FAILED "+e.name); }};
+
+startMsg.textContent="جاري تجهيز التتبع...";
+const fileset=await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+const makeLandmarker=delegate=>HandLandmarker.createFromOptions(fileset,{
+  baseOptions:{modelAssetPath:"https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",delegate},
+  runningMode:"VIDEO",numHands:1
+});
+let landmarker, usedDelegate=(P.get("delegate")||"gpu").toUpperCase();
+try{ landmarker=await makeLandmarker(usedDelegate); }
+catch(err){ usedDelegate="CPU"; landmarker=await makeLandmarker("CPU"); }
+dbg("delegate",usedDelegate);
+startEl.style.display="none";
+
+const toScene=p=>new THREE.Vector3((p.x-0.5)*W,-(p.y-0.5)*H,-p.z*W);
+const baseHint=e=>e&&e.type==="bangle" ? "ضع معصمك أمام الكاميرا" : "وجّه ظهر يدك نحو الكاميرا";
+let lastT=-1, frames=0, lastFps=performance.now(), lastTracked=-1;
+
+function step(){
+  if(video.readyState<2 || video.currentTime===lastT) return;
+  lastT=video.currentTime;
+  const t=performance.now();
+  const res=landmarker.detectForVideo(video,t);
+  tracked=!!(res.landmarks&&res.landmarks.length);
+  frames++; if(t-lastFps>1000){ dbg("fps",frames); frames=0; lastFps=t; }
+  dbg("hands",tracked?1:0);
+  const cE=entries[cur];
+  if(tracked && cE){
+    lastTracked=t;
+    const raw=res.landmarks[0];
+    const lm=raw.map((p,i)=>toScene({x:filters[i][0].f(p.x,t),y:filters[i][1].f(p.y,t),z:filters[i][2].f(p.z,t)}));
+    let pos,axis,sc,ox,oy,oz;
+    if(cE.type==="bangle"){
+      const wrist=lm[0], mid=lm[9];
+      axis=wrist.clone().sub(mid).normalize();            // forearm direction
+      const palmLen=wrist.distanceTo(mid), wristW=lm[5].distanceTo(lm[17])*0.78;
+      pos=wrist.clone().add(axis.clone().multiplyScalar(palmLen*0.22));
+      sc=wristW*0.5*1.12; ox=palmLen*0.55; oy=wristW*0.36; oz=wristW*0.5*0.97;
+    } else {
+      const [i1,i2]=FINGERS[$("finger").value];
+      const mcp=lm[i1], pip=lm[i2];
+      const seg=mcp.distanceTo(pip), fingerW=seg*0.5;
+      pos=mcp.clone().lerp(pip,0.38);
+      axis=pip.clone().sub(mcp).normalize();
+      sc=fingerW*0.5*1.04; ox=seg*1.2; oy=oz=fingerW*0.5*0.97;
+    }
+    let n=new THREE.Vector3().crossVectors(lm[5].clone().sub(lm[0]),lm[17].clone().sub(lm[0])).normalize();
+    if(n.z<0) n.negate(); n.multiplyScalar(poseFlip);
+    const y=n.sub(axis.clone().multiplyScalar(n.dot(axis))).normalize();
+    const z=new THREE.Vector3().crossVectors(axis,y).normalize();
+    const q=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(axis,y,z));
+    const g=cE.group;
+    g.position.copy(pos); g.quaternion.copy(q); g.scale.setScalar(sc);
+    occluder.position.copy(pos); occluder.quaternion.copy(q);
+    occluder.scale.set(ox,oy,oz);
+  }
+  const ready=!!cE && !cE.lazy;
+  occluder.visible=tracked&&ready;
+  entries.forEach((x,i)=>x.group.visible=(tracked&&ready&&i===cur));
+  guide.style.opacity=(tracked||!ready)?0:1;
+  if(cE&&cE.lazy) hint(cE.failed?"تعذّر تحميل القطعة، اضغط عليها لإعادة المحاولة":"جاري تحميل القطعة...");
+  else hint(!tracked && lastTracked>=0 && t-lastTracked>2500 ? "ابتعد قليلًا ليظهر كامل كفّك داخل الإطار" : baseHint(cE));
+  msgEl.style.opacity=(tracked&&ready)?0:1;
+}
+function loop(){
+  requestAnimationFrame(loop);
+  try{ step(); }catch(err){ dbg("loop error",(err&&err.message)||err); }
+  renderer.render(scene,camera);
+  if(shotReq){ shotReq=false; doShot(); }
+}
+loop();
+</script>
+</body>
+</html>
