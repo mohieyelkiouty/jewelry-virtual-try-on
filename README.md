@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.png" alt="Brand logo" width="170">
+  <img src="docs/logo.png" alt="Brand logo" width="170">
 </p>
 
 <h1 align="center">Jewelry Virtual Try-On</h1>
@@ -19,14 +19,12 @@
   <img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-ES%20Modules-F7DF1E?style=flat-square&logo=javascript&logoColor=black">
   <img alt="Python" src="https://img.shields.io/badge/Python-Tooling-3776AB?style=flat-square&logo=python&logoColor=white">
   <img alt="Cloudflare Workers" src="https://img.shields.io/badge/Cloudflare-Workers-F38020?style=flat-square&logo=cloudflareworkers&logoColor=white">
-  <img alt="Status" src="https://img.shields.io/badge/Status-Working%20prototype-success?style=flat-square">
+  <img alt="Version" src="https://img.shields.io/badge/Version-1.0-d9b45a?style=flat-square">
+  <img alt="Status" src="https://img.shields.io/badge/Status-Active%20development-success?style=flat-square">
 </p>
 
 <p align="center">
-  <img src="docs/test.gif" alt="Virtual try-on demo" width="320">
-</p>
-
-<p align="center">
+  <a href="#-demo">Demo</a> ·
   <a href="#-try-it-yourself">Try it</a> ·
   <a href="#-how-it-works">How it works</a> ·
   <a href="#-asset-pipeline">Asset pipeline</a> ·
@@ -167,7 +165,7 @@ flowchart TD
 | **AI-cleaned photos as input** | Removing the hand and background with an image model gives a much better 3D input, but it can **silently change design details** (stone count, tail shape). Every result must be compared with the original product before it is shown to a client. |
 | **CAD files (STL, 3DM)** | Highest fidelity. Files are huge, so they are decimated from over a million faces to about 120 thousand, which brings a model to roughly 2 MB. Multi-part exports sometimes arrive as exploded parts and cannot be auto-assembled. |
 
-**Size budget:** 12 models in the current catalog total about 36 MB, and each is fetched only when selected.
+**Size budget:** the 9 models in the current catalog total about 28 MB, and each is fetched only when selected.
 
 ---
 
@@ -193,6 +191,7 @@ How the project evolved, in the order it actually happened.
 | `dbg is not a function` froze the page on start | A debug element with `id="dbg"` became a browser global that **collided with a function inside the MediaPipe WebAssembly glue code** | Renamed the element. Lesson: avoid DOM ids that match global names used by third-party code |
 | Hand looked zoomed in on phones | The camera returned a landscape stream on a portrait screen and the page cropped it to fill the screen | Portrait-first constraints, zoom reset, adaptive cover or contain |
 | Tracking failed with the hand filling the screen | The wrist and fingers were cut off | Hand guide overlay and an on-screen "move back a little" hint |
+| Thin wire bangles rendered as faint white lines | The source models are thin wires with a white material | Per-product `metal` override (gold) and `inflate`, which thickens a mesh along its normals |
 | Dark, flat metal | Fully metallic materials with weak environment light | Brighter environment, higher reflection intensity, tuned exposure |
 | Package installed but "module not found" | `pip` and `python` pointed to different Python installs | Use `python -m pip` |
 | Dashboard upload kept resetting | Browser-based folder upload was unreliable | Deployed from the command line with Wrangler |
@@ -286,7 +285,7 @@ Open `localhost:8000` in Chrome. The camera works on localhost without HTTPS.
 }
 ```
 
-`type` is `ring` or `bangle`. `axis`, `flip` and `scale` are optional corrections. `logoStyle` is `gold` (tints a transparent PNG with a gold gradient), `original`, or `plate` (ivory card).
+`type` is `ring` or `bangle`. `axis`, `flip` and `scale` are optional corrections. Two more optional fields help with poor source models: `"metal": "gold"` replaces the model's material, and `"inflate": 0.012` thickens thin wire-like meshes (the value is relative to the model size). `logoStyle` is `gold` (tints a transparent PNG with a gold gradient), `original`, or `plate` (ivory card).
 
 ### Convert 3D files
 
@@ -321,7 +320,7 @@ npx wrangler deploy site --name <project-name>
 
 - Fine engraving and tiny pavé stones do not survive decimation or image-to-3D conversion.
 - Sizing uses fixed hand proportions. Measuring against a reference object (for example a bank card) would improve real-world accuracy.
-- Tested on desktop and Android Chrome. iOS Safari still needs a proper test pass.
+- Tested on desktop Chrome, Android Chrome and iPhone Safari. Some phones return a landscape camera stream on a portrait screen, so the preview is letterboxed instead of full screen.
 - Necklaces are not supported yet.
 
 ## 🗺 Roadmap
@@ -358,3 +357,4 @@ Built by **Mohiey Elkiouty**, Computer Vision and AI Engineer. If you want to bu
   <a href="mailto:mohymohamed004@gmail.com">mohymohamed004@gmail.com</a>
 </p>
 
+</details>
