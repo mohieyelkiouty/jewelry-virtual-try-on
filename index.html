@@ -320,6 +320,23 @@ function orient(e){
 }
 
 // ---------- Model loading ----------
+// Thickens thin wire-like meshes by moving vertices along their normals (amount is relative to the model size).
+function inflateModel(model,amount){
+  model.updateMatrixWorld(true);
+  const size=new THREE.Box3().setFromObject(model,true).getSize(new THREE.Vector3());
+  const d=Math.max(size.x,size.y,size.z)*amount, ws=new THREE.Vector3();
+  model.traverse(o=>{
+    if(!o.isMesh) return;
+    const src=o.geometry.attributes.position, pos=new Float32Array(src.count*3);
+    for(let i=0;i<src.count;i++){ pos[3*i]=src.getX(i); pos[3*i+1]=src.getY(i); pos[3*i+2]=src.getZ(i); }
+    let g=new THREE.BufferGeometry(); g.setAttribute("position",new THREE.BufferAttribute(pos,3));
+    if(o.geometry.index) g.setIndex(o.geometry.index.clone());
+    g=mergeVertices(g,1e-6); g.computeVertexNormals();
+    const p=g.attributes.position, n=g.attributes.normal, k=d/(o.getWorldScale(ws).x||1);
+    for(let i=0;i<p.count;i++) p.setXYZ(i,p.getX(i)+n.getX(i)*k,p.getY(i)+n.getY(i)*k,p.getZ(i)+n.getZ(i)*k);
+    p.needsUpdate=true; g.computeVertexNormals(); o.geometry=g;
+  });
+}
 const gltfL=new GLTFLoader(), objL=new OBJLoader();
 const draco=new DRACOLoader(); draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
 gltfL.setDRACOLoader(draco); gltfL.setMeshoptDecoder(MeshoptDecoder);
@@ -343,6 +360,8 @@ function handleFile(f,meta={}){
         });
         if(meta.entry){
           const e=meta.entry, c=e.cfg||{}; Object.assign(e,{model,isObj,userFlip:!!c.flip,adj:c.scale||1});
+          if(c.metal&&metals[c.metal]) model.traverse(o=>{ if(o.isMesh) o.material=metals[c.metal]; });
+          if(c.inflate) inflateModel(model,c.inflate);
           if(c.axis!==undefined) e.axisIdx=c.axis;
           orient(e); e.lazy=false;
           return resolve(true);
@@ -381,13 +400,13 @@ function setLogo(src,style){
     const ratio=img.width/img.height;
     const make=h=>{
       const el=document.createElement(style==="gold"?"div":"img");
-      el.style.height=h+"px"; el.style.width=Math.min(h*ratio,300)+"px";
+      el.style.height=h+"px"; el.style.width=Math.min(h*ratio,260)+"px";
       if(style==="gold"){ el.className="logo"; const u='url("'+src+'")'; el.style.webkitMaskImage=u; el.style.maskImage=u; }
       else { el.src=src; el.alt=""; el.style.objectFit="contain"; }
       return el;
     };
     $("brandLogo").replaceChildren(make(30));
-    $("introLogo").replaceChildren(make(150)); $("introLogo").hidden=false;
+    $("introLogo").replaceChildren(make(118)); $("introLogo").hidden=false;
     brandEl.classList.add("has-logo");
     brandEl.classList.toggle("plate",style==="plate"); $("introLogo").classList.toggle("plate",style==="plate");
     startEl.querySelector(".mark").style.display="none";
@@ -404,8 +423,11 @@ async function loadCatalog(){
     }
     for(const it of items){
       addEntry({id:it.id,name:(it.name_ar||it.name_en||it.id).slice(0,26),type:it.type||"ring",file:it.file,thumb:it.thumb,
-        group:new THREE.Group(),lazy:true,adj:1,cfg:{axis:it.axis,flip:it.flip,scale:it.scale}});
+        group:new THREE.Group(),lazy:true,adj:1,cfg:{axis:it.axis,flip:it.flip,scale:it.scale,metal:it.metal,inflate:it.inflate}});
     }
+    document.querySelectorAll("#tabs button").forEach(b=>{
+      if(b.dataset.t!=="all" && !items.some(i=>(i.type||"ring")===b.dataset.t)) b.hidden=true;
+    });
     dbg("catalog",items.length+" items");
   }catch(err){ hint("تعذر تحميل قائمة المنتجات"); dbg("catalog","FAILED "+((err&&err.message)||err)); }
 }
