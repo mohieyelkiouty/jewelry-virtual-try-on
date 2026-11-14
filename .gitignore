@@ -5,4 +5,8 @@ thumbs/
 node_modules/
 .wrangler/
 __pycache__/
-logo.png
+/logo.png
+*.mp4
+*.MP4
+*.mov
+*.MOV
